@@ -144,6 +144,20 @@ describe("URL Picker popup", () => {
     await closeTabsExcept([]);
   });
 
+  test("typing reorders the list by best match, not just filters it", async () => {
+    const { tab } = await openSource("/reorder.html");
+    const popup = await readyPopup(tab.id);
+    const initial = await labels(popup);
+    expect(initial[0]).toBe("Some long story about github actions"); // page order: first in reading order
+    expect(initial.indexOf("git")).toBeGreaterThan(initial.indexOf("GitHub"));
+    await popup.keyboard.type("git");
+    expect(await labels(popup)).toEqual(["git", "GitHub", "Some long story about github actions"]);
+    await popup.keyboard.type("hub");
+    expect(await labels(popup)).toEqual(["GitHub", "Some long story about github actions"]);
+    expect(await popup.locator(".row.hl .label").textContent()).toBe("GitHub");
+    await closeTabsExcept([]);
+  });
+
   test("Tab multi-select survives filter changes; Enter opens selected tabs in order next to the source", async () => {
     const { tab: source } = await openSource();
     // A tab to the right of the source, so "right after" is observable.

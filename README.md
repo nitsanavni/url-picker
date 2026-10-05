@@ -75,7 +75,11 @@ Bucket = `floor(prominence / 2)`. The buckets are coarse on purpose: a slightly 
 
 **Duplicates** (same URL; only a bare trailing `#` is dropped, real fragments are kept) are merged into one item. The merged item takes its position from the best occurrence (best tier, then most prominent) and uses the most informative label, i.e. real link text rather than a bare URL.
 
-**With a query**, fzf's score decides the order. When scores tie, page rank breaks the tie: items are passed to fzf already in page-rank order, and there is also an explicit page-rank tiebreaker. So among equally good matches, visible and prominent links come first.
+**With a query**, fzf's score decides the order. fzf scores tie often: "git" scores the same against `git`, `GitHub` and `Some long story about github actions`. Ties are broken in this order:
+
+1. **Match quality.** An exact label match comes first, then a label where every term starts a word (`git` starts a word in `GitHub` and in `github actions`), then a match entirely within the label, then a match that needs the URL. Extended-syntax queries are handled on a best-effort basis: negated terms are ignored, `^ ' $` are stripped, and an OR group counts if any of its alternatives qualifies.
+2. **Shorter label first.** This is fzf's default `--tiebreak=length`, applied to the label only.
+3. **Page rank**, so visible and prominent links win among otherwise equal matches.
 
 ## Privacy and permissions
 

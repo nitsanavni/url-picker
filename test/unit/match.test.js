@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { createMatcher, splitPositions, haystack, SEP } from "../../src/match.js";
+import { createMatcher, splitPositions, haystack, SEP, positiveTermGroups, matchQuality, QUALITY } from "../../src/match.js";
+import { items as hn } from "./fixtures/hn-like.js";
 
 const it = (label, url) => ({ label, url });
 const labels = (results) => results.map((r) => r.item.label);
@@ -56,7 +57,7 @@ describe("createMatcher", () => {
 
   test("extended syntax: ^prefix, suffix$, 'exact, !negation, a | b", () => {
     const m = createMatcher(items);
-    expect(labels(m("^Do"))).toEqual(["Docs: Getting started", "Download PDF"]);
+    expect(labels(m("^Do"))).toEqual(["Download PDF", "Docs: Getting started"]); // tie -> shorter label
     expect(labels(m(".pdf$"))).toEqual(["Download PDF"]);
     expect(labels(m("'policy"))).toEqual(["Privacy policy"]);
     expect(labels(m("example !legal !pdf !docs"))).toEqual(["Home", "Pricing"]);
@@ -66,7 +67,7 @@ describe("createMatcher", () => {
     expect(labels(m("'pcy"))).toEqual([]);
   });
 
-  test("page rank breaks ties between equal fzf scores", () => {
+  test("page rank breaks ties between equal fzf scores and equal labels", () => {
     const a = it("Read more", "https://x.com/a");
     const b = it("Read more", "https://x.com/b");
     const c = it("Read more", "https://x.com/c");
@@ -95,5 +96,81 @@ describe("splitPositions", () => {
     const urlStart = 2 + SEP.length;
     const r = splitPositions(new Set([1, 0, 2, 3, urlStart, urlStart + 8]), item);
     expect(r).toEqual({ labelPositions: [0, 1], urlPositions: [0, 8] });
+  });
+});
+
+describe("tiebreakers", () => {
+  test("repro: exact label beats word match beats long label on equal fzf score", () => {
+    const its = [
+      it("Some long story about github actions", "https://blog.example.com/1"),
+      it("GitHub", "https://github.com/"),
+      it("git", "https://git-scm.com/"),
+    ];
+    const m = createMatcher(its);
+    const r = m("git");
+    expect(new Set(r.map((x) => x.score)).size).toBe(1); // fzf ties them all
+    expect(labels(r)).toEqual(["git", "GitHub", "Some long story about github actions"]);
+    expect(labels(m("github"))).toEqual(["GitHub", "Some long story about github actions"]);
+  });
+
+  test("label match beats a URL-only match; shorter label beats longer", () => {
+    const its = [it("Docs", "https://x.com/rust"), it("Rusty nails and more", "https://y.com/"), it("Rust stuff", "https://z.com/")];
+    expect(labels(createMatcher(its)("rust"))).toEqual(["Rust stuff", "Rusty nails and more", "Docs"]);
+  });
+
+  test("fzf score stays primary over quality", () => {
+    // fzf rewards word starts: "x g i t" outscores "legit", even though
+    // "legit" would win on label length
+    const its = [it("legit", "https://b.com/"), it("x g i t", "https://a.com/")];
+    const r = createMatcher(its)("git");
+    expect(r[0].score).toBeGreaterThan(r[1].score);
+    expect(labels(r)).toEqual(["x g i t", "legit"]);
+  });
+
+  test("positiveTermGroups parses extended syntax best-effort", () => {
+    expect(positiveTermGroups("Git")).toEqual([["git"]]);
+    expect(positiveTermGroups("^hacker news$ !jobs 'faq")).toEqual([["hacker"], ["news"], ["faq"]]);
+    expect(positiveTermGroups("rust | go  docs")).toEqual([["rust", "go"], ["docs"]]);
+    expect(positiveTermGroups("!only")).toEqual([]);
+  });
+
+  test("matchQuality levels", () => {
+    const r = (label, labelPositions = [0], urlPositions = []) => ({ item: it(label, "https://u.com/"), labelPositions, urlPositions });
+    expect(matchQuality(r("Hacker News"), [["hacker"], ["news"]])).toBe(QUALITY.EXACT);
+    expect(matchQuality(r("GitHub"), [["git"]])).toBe(QUALITY.WORD);
+    expect(matchQuality(r("about github-actions"), [["actions"]])).toBe(QUALITY.WORD);
+    expect(matchQuality(r("legit"), [["git"]])).toBe(QUALITY.LABEL);
+    expect(matchQuality(r("Docs", [], [3]), [["rust"]])).toBe(QUALITY.URL);
+    expect(matchQuality(r("Rust or Go"), [["python", "go"]])).toBe(QUALITY.WORD);
+  });
+});
+
+describe("realistic ordering (news-site fixture)", () => {
+  const m = createMatcher(hn);
+  const top = (q, n = 3) => labels(m(q)).slice(0, n);
+  const cases = {
+    git: ["git", "GitHub", "github.com"],
+    github: ["GitHub", "github.com", "Why we moved off GitHub"],
+    rust: ["Rust", "rust-lang.org", "The Rust compiler is getting faster"],
+    new: ["new", "Hacker News", "Postgres 19 beta: what's new"],
+    comments: ["comments", "87 comments", "312 comments"],
+    "hacker news": ["Hacker News"],
+    api: ["API"],
+    fzf: ["A gentle introduction to fzf"],
+    show: ["show", "Show HN: A fuzzy URL picker for Chrome"],
+    "^git": ["git", "GitHub", "github.com"],
+    "'faq": ["FAQ"],
+    "rust | git": ["Rust", "rust-lang.org", "The Rust compiler is getting faster", "git", "GitHub"],
+  };
+  for (const [q, expected] of Object.entries(cases)) {
+    test(`"${q}" -> ${expected.join(" | ")}`, () => {
+      expect(top(q, expected.length)).toEqual(expected);
+    });
+  }
+  test("URL-only matches come after label matches on equal score", () => {
+    // "ycombinator" appears only in URLs
+    const r = m("ycombinator");
+    expect(r.length).toBeGreaterThan(10);
+    expect(r.every((x) => x.labelPositions.length === 0)).toBe(true);
   });
 });
