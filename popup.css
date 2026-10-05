@@ -1,0 +1,106 @@
+:root {
+  --bg: #ffffff;
+  --fg: #1d1f23;
+  --muted: #6b7079;
+  --border: #e3e5e8;
+  --row-hl: #e8f0fe;
+  --match: #c2410c;
+  --sel: #2563eb;
+  --badge-bg: #eef0f3;
+  --badge-fg: #555b66;
+  --kbd-bg: #f2f3f5;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1e1f22;
+    --fg: #e6e7ea;
+    --muted: #8d929b;
+    --border: #34363b;
+    --row-hl: #2c3a52;
+    --match: #fb923c;
+    --sel: #60a5fa;
+    --badge-bg: #2d2f34;
+    --badge-fg: #aab0ba;
+    --kbd-bg: #2a2c31;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  width: 640px;
+  max-height: 560px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--fg);
+  font: 13px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.bar input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 15px;
+}
+.count { color: var(--muted); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.count .status { color: var(--sel); }
+.message { padding: 18px 14px; color: var(--muted); }
+.message strong { display: block; color: var(--fg); margin-bottom: 4px; }
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  max-height: 470px;
+}
+.list:empty { display: none; }
+.row {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  column-gap: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.row.hl { background: var(--row-hl); }
+.mark { grid-row: span 2; color: var(--sel); font-weight: 700; }
+.label, .url { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.url { grid-column: 2 / span 2; color: var(--muted); font-size: 11.5px; }
+.label mark, .url mark { background: none; color: var(--match); font-weight: 700; }
+.badge {
+  align-self: center;
+  font-size: 10px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--badge-bg);
+  color: var(--badge-fg);
+}
+.row.selected .label { color: var(--sel); }
+.hint {
+  display: flex;
+  gap: 12px;
+  padding: 5px 10px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+}
+kbd {
+  font: inherit;
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--kbd-bg);
+  margin-right: 2px;
+}

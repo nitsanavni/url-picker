@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>URL Picker</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="bar">
+    <input id="q" type="text" autocomplete="off" spellcheck="false" autofocus
+           placeholder="Filter links…" aria-label="Filter links" aria-controls="list">
+    <span id="count" class="count"></span>
+  </div>
+  <div id="message" class="message" hidden></div>
+  <ul id="list" class="list" role="listbox" aria-label="Links"></ul>
+  <footer class="hint">
+    <span><kbd>↑</kbd><kbd>↓</kbd> move</span>
+    <span><kbd>Tab</kbd> select</span>
+    <span><kbd>Enter</kbd> open</span>
+    <span><kbd>^Y</kbd> copy</span>
+    <span><kbd>Esc</kbd> close</span>
+  </footer>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
