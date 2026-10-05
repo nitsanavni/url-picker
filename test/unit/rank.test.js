@@ -139,6 +139,11 @@ describe("mergeCandidates", () => {
     const heading = c({ url: "https://a.com/y", label: "Big Story", headingLevel: 2, docIndex: 2 });
     expect(mergeCandidates([small, heading])[0].label).toBe("Big Story");
   });
+  test("merged item keeps the best occurrence's locator", () => {
+    const hidden = c({ url: "https://a.com/l", visible: false, inViewport: false, locator: { kind: "link", index: 0 } });
+    const shown = c({ url: "https://a.com/l", locator: { kind: "link", index: 7 } });
+    expect(mergeCandidates([hidden, shown])[0].locator).toEqual({ kind: "link", index: 7 });
+  });
   test("fragments are distinct URLs", () => {
     expect(mergeCandidates([c({ url: "https://a.com/#a" }), c({ url: "https://a.com/#b" })]).length).toBe(2);
   });

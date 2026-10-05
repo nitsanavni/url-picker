@@ -1,5 +1,6 @@
 // Popup: thin DOM layer over extract.js / rank.js / match.js / state.js.
 import { extractLinks } from "./src/extract.js";
+import { revealLink } from "./src/reveal.js";
 import { rankCandidates, TIER } from "./src/rank.js";
 import { createMatcher } from "./src/match.js";
 import { initialState, reduce, keyCommand } from "./src/state.js";
@@ -73,7 +74,13 @@ async function init() {
 
 function dispatch(action) {
   if (!state) return;
+  const prevStatus = state.status;
   state = reduce(state, action);
+  // Any new status message is transient.
+  if (state.status && state.status !== prevStatus) {
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(() => dispatch({ type: "status", text: "" }), 1500);
+  }
   render();
   if (state.effect) runEffect(state.effect);
 }
@@ -90,6 +97,21 @@ async function runEffect(effect) {
     await openTabs(effect.urls.slice(1));
     await chrome.tabs.update(sourceTab.id, { url: effect.urls[0] });
     return window.close();
+  }
+  if (effect.type === "reveal") {
+    let result = null;
+    try {
+      const [res] = await chrome.scripting.executeScript({
+        target: { tabId: sourceTab.id },
+        func: revealLink,
+        args: [effect.locator],
+      });
+      result = res && res.result;
+    } catch (e) {
+      console.warn("url-picker: revealLink failed", e);
+    }
+    if (result && result.found) return window.close();
+    return flashStatus(result && result.reason === "hidden" ? "hidden on page — can't scroll" : "link no longer on page");
   }
   if (effect.type === "copy") {
     const ok = await copyText(effect.urls.join("\n"));
@@ -128,9 +150,9 @@ async function copyText(text) {
 }
 
 function flashStatus(text) {
+  // Re-showing the same text still restarts the timer.
+  if (state.status === text) dispatch({ type: "status", text: "" });
   dispatch({ type: "status", text });
-  clearTimeout(statusTimer);
-  statusTimer = setTimeout(() => dispatch({ type: "status", text: "" }), 1500);
 }
 
 // Wrap code points at `positions` in <mark>.
@@ -231,6 +253,7 @@ document.addEventListener("keydown", (e) => {
   if (e.isComposing) return;
   const command = keyCommand({
     key: e.key,
+    code: e.code,
     ctrlKey: e.ctrlKey,
     metaKey: e.metaKey,
     altKey: e.altKey,

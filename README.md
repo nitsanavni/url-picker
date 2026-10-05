@@ -22,6 +22,7 @@ A Chrome extension (Manifest V3) for opening links from the keyboard. Press **Co
 | `Shift+Tab` | select/unselect and move up |
 | `Enter` | open the selected items (in the order you selected them), or the highlighted item if nothing is selected, as background tabs right after the current tab |
 | `Shift+Enter` | go there in the **current tab**. With a selection, the current tab goes to the first selected item and the rest open as background tabs right after it |
+| `Alt+Enter` (`⌥Enter`) | ↧ scroll to it: closes the picker and scrolls the page to the highlighted link, flashes an outline around it for 1.5s and focuses it (so Enter on the page follows it). A plain-text URL gets scrolled to and selected instead. Hidden items stay in the picker with a "hidden on page" message, and links that have since disappeared show "link no longer on page" |
 | `Ctrl+Y` | copy the selected URLs (or the highlighted one), one per line. The popup stays open and shows "copied N" |
 | `⌘C` / `Ctrl+C` | same as `Ctrl+Y`, unless you have text selected in the filter box (then it copies that text as usual) |
 | `Esc` | close |
@@ -79,7 +80,7 @@ Bucket = `floor(prominence / 2)`. The buckets are coarse on purpose: a slightly 
 ## Privacy and permissions
 
 - Permissions: `activeTab` and `scripting`. There are no host permissions and no content scripts.
-- The extension can read a page only after you invoke it on that tab. It then runs one function in the page that collects the links and returns them to the popup.
+- The extension can read a page only after you invoke it on that tab. It then runs one function in the page that collects the links and returns them to the popup. Alt+Enter runs a second function that scrolls to a link. Its outline flash is temporary and leaves the page's inline styles as they were.
 - Nothing is stored, and nothing leaves your browser. There is no network access and no analytics.
 - Chrome doesn't allow extensions on `chrome://` pages, the Chrome Web Store or the built-in PDF viewer. On those pages the popup says "Can't read this page".
 
@@ -101,6 +102,7 @@ The e2e tests use Playwright's Chromium. If it isn't installed, run `bunx playwr
 manifest.json         MV3 manifest (activeTab + scripting, Ctrl+U / MacCtrl+U)
 popup.html/css/js     thin DOM layer: renders state, runs effects (open tabs, copy, close)
 src/extract.js        extractLinks(): self-contained, injected via chrome.scripting.executeScript
+src/reveal.js         revealLink(locator): self-contained, injected to scroll to / flash / focus an item
 src/rank.js           prominence score, tiers, dedupe/merge, page-rank sort
 src/match.js          fzf-for-js wrapper: label+URL haystack, positions, page-rank tiebreak
 src/state.js          picker reducer + key-to-command mapping

@@ -4,6 +4,11 @@
 //
 // Returns { pageUrl, viewport: {width, height}, candidates: [...] } where each
 // candidate carries raw layout/prominence features; scoring happens in rank.js.
+// Each candidate also has a `locator` that revealLink() (src/reveal.js) uses to
+// find the element again:
+//   { kind: "link", index, url }  index into querySelectorAll("a[href], area[href]")
+//   { kind: "text", node, offset, text, url }  node = index among text nodes
+//     visited by the TreeWalker below (same SKIP filter), offset into its data
 //
 // Test hook: extractLinks({ textOnly: "some text" }) returns the plain-text URL
 // matches for that string without touching the DOM (used by unit tests), and
@@ -172,6 +177,9 @@ export function extractLinks(opts) {
 
   const candidates = [];
   let docIndex = 0;
+  const linkIndex = new Map();
+  document.querySelectorAll("a[href], area[href]").forEach((el, i) => linkIndex.set(el, i));
+  let textNodeIndex = -1;
 
   function addAnchor(a) {
     const url = resolveHref(a);
@@ -221,6 +229,7 @@ export function extractLinks(opts) {
       isImage: !!img && !collapse(a.innerText),
       hasAlt: !!(img && collapse(img.getAttribute("alt"))),
       docIndex: docIndex++,
+      locator: { kind: "link", index: linkIndex.get(a) ?? -1, url },
     });
   }
 
@@ -258,6 +267,7 @@ export function extractLinks(opts) {
         isImage: false,
         hasAlt: false,
         docIndex: docIndex++,
+        locator: { kind: "text", node: textNodeIndex, offset: f.index, text: f.text, url: f.url },
       });
     }
   }
@@ -274,8 +284,9 @@ export function extractLinks(opts) {
   for (let node = walker.currentNode; node; node = walker.nextNode()) {
     if (node.nodeType === 1) {
       if ((node.localName === "a" || node.localName === "area") && node.hasAttribute("href")) addAnchor(node);
-    } else if (!node.parentElement || !node.parentElement.closest("a[href]")) {
-      addTextUrls(node);
+    } else {
+      textNodeIndex++;
+      if (!node.parentElement || !node.parentElement.closest("a[href]")) addTextUrls(node);
     }
   }
 

@@ -10,12 +10,16 @@
 //   selected,   // URLs, in the order they were selected
 //   status,     // transient message, e.g. "copied 2"
 //   effect,     // null | {type:'open', urls} | {type:'goto', urls} | {type:'copy', urls} | {type:'close'}
+//               // | {type:'reveal', url, locator}
 //               // goto: navigate the source tab to urls[0], open the rest as new tabs after it
 // }
 
 // Map a keyboard event to a picker command (or null = let the input have it).
 export function keyCommand(e) {
-  const { key, ctrlKey = false, metaKey = false, altKey = false, shiftKey = false } = e;
+  const { key, code, ctrlKey = false, metaKey = false, altKey = false, shiftKey = false } = e;
+  // Alt/Option+Enter: scroll to the item on the page. Match code too, since
+  // Option can change e.key on macOS.
+  if (altKey && (code === "Enter" || code === "NumpadEnter" || key === "Enter")) return "reveal";
   if (altKey) return null;
   if (key === "Escape") return "close";
   if (key === "Enter") return shiftKey ? "acceptHere" : "accept";
@@ -111,6 +115,12 @@ export function reduce(state, action) {
         case "acceptHere": {
           const urls = targetUrls(s);
           return urls.length ? { ...s, effect: { type: "goto", urls } } : s;
+        }
+        case "reveal": {
+          const item = highlighted(s);
+          if (!item) return s;
+          if (item.visible === false) return { ...s, status: "hidden on page — can't scroll" };
+          return { ...s, effect: { type: "reveal", url: item.url, locator: item.locator } };
         }
         case "copy": {
           const urls = targetUrls(s);

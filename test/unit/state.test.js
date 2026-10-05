@@ -38,6 +38,12 @@ describe("keyCommand", () => {
     expect(keyCommand({ key: "c", ctrlKey: true })).toBe("copy");
     expect(keyCommand({ key: "c", metaKey: true, hasTextSelection: true })).toBe(null);
   });
+  test("Alt/Option+Enter reveals, matched by key or code", () => {
+    expect(keyCommand({ key: "Enter", code: "Enter", altKey: true })).toBe("reveal");
+    expect(keyCommand({ key: "Unidentified", code: "Enter", altKey: true })).toBe("reveal");
+    expect(keyCommand({ key: "Enter", code: "NumpadEnter", altKey: true })).toBe("reveal");
+    expect(keyCommand({ key: "Enter", code: "Enter" })).toBe("accept");
+  });
   test("plain typing and unrelated chords are left to the input", () => {
     expect(keyCommand({ key: "a" })).toBe(null);
     expect(keyCommand({ key: "n" })).toBe(null);
@@ -144,6 +150,26 @@ describe("reduce", () => {
     const s = run(start(), { type: "click", index: 1, here: true });
     expect(s.effect).toEqual({ type: "goto", urls: ["https://a.com/beta"] });
     expect(s.cursor).toBe(1);
+  });
+
+  test("reveal: visible highlighted item yields a reveal effect with its locator", () => {
+    const loc = { kind: "link", index: 3, url: "https://v.com/" };
+    const its = [{ label: "V", url: "https://v.com/", visible: true, locator: loc }, { label: "H", url: "https://h.com/", visible: false }];
+    const s0 = initialState(its, createMatcher(its));
+    expect(run(s0, cmd("reveal")).effect).toEqual({ type: "reveal", url: "https://v.com/", locator: loc });
+  });
+
+  test("reveal on a hidden item shows a status and keeps the popup open", () => {
+    const its = [{ label: "H", url: "https://h.com/", visible: false, locator: {} }];
+    const s = run(initialState(its, createMatcher(its)), cmd("reveal"));
+    expect(s.effect).toBe(null);
+    expect(s.status).toBe("hidden on page — can't scroll");
+  });
+
+  test("reveal with no results does nothing; it ignores the selection", () => {
+    expect(run(start(), typed("zzzzqqq"), cmd("reveal")).effect).toBe(null);
+    const s = run(start(), cmd("toggleDown"), cmd("reveal"));
+    expect(s.effect).toMatchObject({ type: "reveal", url: "https://a.com/beta" });
   });
 
   test("Escape closes", () => {

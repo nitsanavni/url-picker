@@ -254,6 +254,87 @@ describe("URL Picker popup", () => {
     await closeTabsExcept([]);
   });
 
+  async function revealFromPopup(sourceId, query) {
+    const popup = await readyPopup(sourceId);
+    await popup.locator("#q").fill(query);
+    return popup;
+  }
+
+  async function waitFor(page, fn, arg) {
+    await page.waitForFunction(fn, arg, { timeout: 5000 });
+  }
+
+  test("Alt+Enter scrolls a below-the-fold link into view, flashes and focuses it", async () => {
+    const { page, tab: source } = await openSource();
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    const popup = await revealFromPopup(source.id, "'Below the fold");
+    await pressAndWaitClose(popup, "Alt+Enter");
+    await page.bringToFront();
+    await waitFor(page, () => {
+      const a = document.querySelector('a[href="/below"]');
+      const r = a.getBoundingClientRect();
+      return window.scrollY > 0 && r.top >= 0 && r.bottom <= innerHeight;
+    });
+    expect(await page.evaluate(() => document.activeElement.getAttribute("href"))).toBe("/below");
+    expect(await page.evaluate(() => document.querySelector('a[href="/below"]').style.outlineStyle)).toBe("solid");
+    // the flash is temporary and leaves no inline style behind
+    await waitFor(page, () => !document.querySelector('a[href="/below"]').hasAttribute("style"));
+    expect(await page.evaluate(() => document.activeElement.getAttribute("href"))).toBe("/below");
+    await closeTabsExcept([]);
+  });
+
+  test("Alt+Enter on a plain-text URL scrolls to it and selects the text", async () => {
+    const { page, tab: source } = await openSource();
+    const popup = await revealFromPopup(source.id, "far.example");
+    await pressAndWaitClose(popup, "Alt+Enter");
+    await page.bringToFront();
+    await waitFor(page, () => window.scrollY > 2000);
+    expect(await page.evaluate(() => window.getSelection().toString())).toBe("https://far.example.com/x");
+    await waitFor(page, () => {
+      const r = window.getSelection().getRangeAt(0).getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= innerHeight;
+    });
+    await closeTabsExcept([]);
+  });
+
+  test("Alt+Enter on a hidden item keeps the popup open with a status", async () => {
+    const { page, tab: source } = await openSource();
+    const popup = await revealFromPopup(source.id, "'hidden by display");
+    await popup.keyboard.press("Alt+Enter");
+    await waitFor(popup, () => document.querySelector("#count .status")?.textContent.includes("hidden on page"));
+    expect(popup.isClosed()).toBe(false);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await closeTabsExcept([]);
+  });
+
+  test("Alt+Enter when the link was removed from the page reports it", async () => {
+    const { page, tab: source } = await openSource();
+    const popup = await revealFromPopup(source.id, "'Below the fold");
+    await page.evaluate(() => document.querySelector('a[href="/below"]').remove());
+    await popup.keyboard.press("Alt+Enter");
+    await waitFor(popup, () => document.querySelector("#count .status")?.textContent.includes("link no longer on page"));
+    expect(popup.isClosed()).toBe(false);
+    await closeTabsExcept([]);
+  });
+
+  test("Alt+Enter falls back to searching by URL when the DOM shifted", async () => {
+    const { page, tab: source } = await openSource();
+    const popup = await revealFromPopup(source.id, "'Below the fold");
+    // insert links before it so the stored index is stale
+    await page.evaluate(() => {
+      for (let i = 0; i < 3; i++) {
+        const a = document.createElement("a");
+        a.href = "/inserted" + i;
+        a.textContent = "inserted";
+        document.body.prepend(a);
+      }
+    });
+    await pressAndWaitClose(popup, "Alt+Enter");
+    await page.bringToFront();
+    await waitFor(page, () => document.activeElement.getAttribute("href") === "/below" && window.scrollY > 0);
+    await closeTabsExcept([]);
+  });
+
   test("Ctrl+Y copies selected URLs (newline-separated) and keeps the popup open", async () => {
     const { tab: source } = await openSource();
     const popup = await readyPopup(source.id);

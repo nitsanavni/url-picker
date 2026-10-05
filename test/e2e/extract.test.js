@@ -115,6 +115,17 @@ describe("extractLinks in Chromium", () => {
     expect(urls.some((u) => u.includes("in-textarea"))).toBe(false);
   });
 
+  test("locators point back at the element / text node", async () => {
+    const below = one("/below");
+    expect(below.locator).toMatchObject({ kind: "link", url: `${base}/below` });
+    const href = await page.evaluate((i) => document.querySelectorAll("a[href], area[href]")[i].getAttribute("href"), below.locator.index);
+    expect(href).toBe("/below");
+    const far = one("https://far.example.com/x");
+    expect(far.locator).toMatchObject({ kind: "text", text: "https://far.example.com/x" });
+    expect(far.locator.node).toBeGreaterThanOrEqual(0);
+    expect(far.locator.offset).toBe("Far plain text ".length);
+  });
+
   test("duplicates are reported separately, in document order", () => {
     const dups = byUrl("/dup");
     expect(dups.length).toBe(2);

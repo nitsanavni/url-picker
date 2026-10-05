@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { extractLinks } from "../../src/extract.js";
+import { revealLink } from "../../src/reveal.js";
 
 const find = (text) => extractLinks({ textOnly: text });
 const texts = (text) => find(text).map((m) => m.text);
@@ -100,5 +101,9 @@ describe("extractLinks is self-contained", () => {
     const rebuilt = new Function(`return (${extractLinks.toString()})`)();
     expect(rebuilt({ textOnly: "x https://a.com/y." }).map((m) => m.text)).toEqual(["https://a.com/y"]);
     expect(extractLinks.toString().startsWith("function extractLinks")).toBe(true);
+  });
+  test("revealLink can be rebuilt from its source text too", () => {
+    const rebuilt = new Function(`return (${revealLink.toString()})`)();
+    expect(rebuilt(null)).toEqual({ found: false, reason: "bad-locator" });
   });
 });
