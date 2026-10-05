@@ -7,6 +7,7 @@ import {
   distanceFromViewport,
   normalizeUrl,
   isInformativeLabel,
+  hasInformativeLabel,
   mergeCandidates,
   rankCandidates,
 } from "../../src/rank.js";
@@ -50,6 +51,17 @@ describe("prominence", () => {
     expect(prominence(c({ region: "main" }))).toBe(base + 1.5);
     expect(prominence(c({ isImage: true, hasAlt: true }))).toBe(base + 0.5);
   });
+  test("no area bonus without an informative label; image bonus only with alt", () => {
+    const big = { area: 200000, isImage: true };
+    const labelled = prominence(c({ ...big, label: "Diagram", hasAlt: true }));
+    const fromUrl = prominence(c({ ...big, label: "Did_you_mean.png", labelFromUrl: true }));
+    const bareUrlText = prominence(c({ ...big, label: "https://x.com/big" , url: "https://x.com/big" }));
+    expect(fromUrl).toBe(0);
+    expect(bareUrlText).toBe(0);
+    expect(labelled).toBe(3 + 0.5);
+    expect(prominence(c({ ...big, label: "Diagram", hasAlt: false }))).toBe(3);
+    expect(fromUrl).toBeLessThan(prominence(c({ label: "plain text link" })));
+  });
   test("nav/header/footer/aside and tiny fonts lower it", () => {
     const base = prominence(c());
     for (const region of ["nav", "header", "footer", "aside"]) {
@@ -87,6 +99,10 @@ describe("normalizeUrl / labels", () => {
     expect(normalizeUrl("https://a.com/page#intro")).toBe("https://a.com/page#intro");
     expect(normalizeUrl("https://a.com/?q=1")).toBe("https://a.com/?q=1");
   });
+  test("hasInformativeLabel respects labelFromUrl", () => {
+    expect(hasInformativeLabel(c({ label: "Docs" }))).toBe(true);
+    expect(hasInformativeLabel(c({ label: "Did_you_mean.png", labelFromUrl: true }))).toBe(false);
+  });
   test("isInformativeLabel", () => {
     expect(isInformativeLabel("Docs", "https://a.com")).toBe(true);
     expect(isInformativeLabel("", "https://a.com")).toBe(false);
@@ -108,6 +124,15 @@ describe("mergeCandidates", () => {
     expect(m.docIndex).toBe(1);
     expect(m.count).toBe(2);
     expect(m.fromText).toBe(false);
+  });
+  test("a URL-derived label loses to real text from another occurrence", () => {
+    const img = c({ url: "https://a.com/f.png", label: "f.png", labelFromUrl: true, area: 90000, docIndex: 1 });
+    const text = c({ url: "https://a.com/f.png", label: "Figure 1", top: 400, docIndex: 2 });
+    const [m] = mergeCandidates([img, text]);
+    expect(m.label).toBe("Figure 1");
+    expect(m.labelFromUrl).toBe(false);
+    const [only] = mergeCandidates([c({ url: "https://a.com/g.png", label: "g.png", labelFromUrl: true })]);
+    expect(only).toMatchObject({ label: "g.png", labelFromUrl: true });
   });
   test("prefers the label of the most prominent occurrence", () => {
     const small = c({ url: "https://a.com/y", label: "more", docIndex: 1 });
@@ -144,6 +169,12 @@ describe("rankCandidates", () => {
     const ranked = rankCandidates([navA, navB, body1, headline, body2, body3], VP);
     expect(urls(ranked)).toEqual(urls([headline, body3, body2, body1, navA, navB]));
     expect(ranked.map((r) => r.rank)).toEqual([0, 1, 2, 3, 4, 5]);
+  });
+  test("a big unlabeled image link ranks below normal text links in main", () => {
+    const img = c({ region: "main", top: 50, area: 120000, isImage: true, label: "Did_you_mean.png", labelFromUrl: true });
+    const text1 = c({ region: "main", top: 300 });
+    const text2 = c({ region: "main", top: 400 });
+    expect(urls(rankCandidates([img, text1, text2], VP))).toEqual(urls([text1, text2, img]));
   });
   test("small prominence differences do not override reading order", () => {
     const first = c({ top: 100 });

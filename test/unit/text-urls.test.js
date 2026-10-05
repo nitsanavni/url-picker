@@ -80,6 +80,21 @@ describe("plain-text URL detection", () => {
   });
 });
 
+describe("readable URL labels", () => {
+  const readable = (u) => extractLinks({ readableUrl: u });
+  test("last path segment, decoded", () => {
+    expect(readable("https://en.wikipedia.org/wiki/File:Did_you_mean_andr%C3%A9.png")).toBe("File:Did_you_mean_andré.png");
+    expect(readable("https://a.com/docs/guide/")).toBe("guide");
+    expect(readable("https://a.com/a/b?x=1#y")).toBe("b");
+  });
+  test("host for bare domains; tolerates bad encoding", () => {
+    expect(readable("https://example.com/")).toBe("example.com");
+    expect(readable("https://example.com:8080/?q=1")).toBe("example.com:8080");
+    expect(readable("https://a.com/100%25")).toBe("100%");
+    expect(readable("https://a.com/bad%E0%A4%A")).toBe("bad%E0%A4%A");
+  });
+});
+
 describe("extractLinks is self-contained", () => {
   test("can be rebuilt from its source text (as executeScript does)", () => {
     const rebuilt = new Function(`return (${extractLinks.toString()})`)();

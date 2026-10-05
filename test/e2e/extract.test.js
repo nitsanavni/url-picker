@@ -62,6 +62,18 @@ describe("extractLinks in Chromium", () => {
     expect(img.area).toBeGreaterThanOrEqual(120 * 60);
   });
 
+  test("label fallbacks for links without text, else a readable URL", () => {
+    expect(one("/labelledby")).toMatchObject({ label: "Labelled elsewhere", labelFromUrl: false });
+    expect(one("/imgtitle")).toMatchObject({ label: "Image title", labelFromUrl: false });
+    expect(one("/linktitle")).toMatchObject({ label: "Link title", labelFromUrl: false });
+    expect(one("/figure")).toMatchObject({ label: "Figure caption text", labelFromUrl: false });
+    const unlabeled = one("/wiki/File:Did_you_mean_andr%C3%A9.png");
+    expect(unlabeled).toMatchObject({ label: "File:Did_you_mean_andré.png", labelFromUrl: true, visible: true, inViewport: true });
+    expect(unlabeled.area).toBeGreaterThanOrEqual(300 * 200);
+    expect(one("https://bare.example.com/")).toMatchObject({ label: "bare.example.com", labelFromUrl: true });
+    expect(one("/story").labelFromUrl).toBe(false);
+  });
+
   test("above vs below the fold", () => {
     expect(one("/story")).toMatchObject({ visible: true, inViewport: true });
     expect(one("/below")).toMatchObject({ visible: true, inViewport: false });
@@ -132,6 +144,13 @@ describe("ranking real layout", () => {
     expect(rankOf("/inline")).toBeLessThan(rankOf("/home"));
     expect(rankOf("/inline")).toBeLessThan(rankOf("/related"));
     expect(rankOf("/small")).toBeLessThan(rankOf("/home"));
+  });
+
+  test("a big unlabeled image link ranks below normal text links in main", () => {
+    const img = rankOf("/wiki/File:Did_you_mean_andr%C3%A9.png");
+    expect(img).toBeGreaterThan(rankOf("/inline"));
+    expect(img).toBeGreaterThan(rankOf("/relative/path?x=1"));
+    expect(img).toBeGreaterThan(rankOf("/card"));
   });
 
   test("reading order within the same prominence bucket", () => {

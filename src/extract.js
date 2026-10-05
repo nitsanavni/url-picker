@@ -6,7 +6,8 @@
 // candidate carries raw layout/prominence features; scoring happens in rank.js.
 //
 // Test hook: extractLinks({ textOnly: "some text" }) returns the plain-text URL
-// matches for that string without touching the DOM (used by unit tests).
+// matches for that string without touching the DOM (used by unit tests), and
+// extractLinks({ readableUrl: "https://..." }) returns the URL-derived label.
 
 export function extractLinks(opts) {
   // ---- plain-text URL detection -------------------------------------------
@@ -53,7 +54,27 @@ export function extractLinks(opts) {
     return out;
   }
 
+  // Readable fallback label from a URL: last path segment (decoded), else host.
+  function readableUrl(url) {
+    try {
+      const u = new URL(url);
+      const segs = u.pathname.split("/").filter(Boolean);
+      if (segs.length) {
+        const last = segs[segs.length - 1];
+        try {
+          return decodeURIComponent(last);
+        } catch {
+          return last;
+        }
+      }
+      return u.host;
+    } catch {
+      return url;
+    }
+  }
+
   if (opts && typeof opts.textOnly === "string") return findTextUrls(opts.textOnly);
+  if (opts && typeof opts.readableUrl === "string") return readableUrl(opts.readableUrl);
 
   // ---- DOM extraction ------------------------------------------------------
   const vw = document.documentElement.clientWidth || window.innerWidth;
@@ -110,17 +131,31 @@ export function extractLinks(opts) {
 
   const collapse = (s) => (s || "").replace(/\s+/g, " ").trim();
 
+  function labelledBy(el) {
+    const ids = (el.getAttribute("aria-labelledby") || "").split(/\s+/).filter(Boolean);
+    return collapse(ids.map((id) => document.getElementById(id)?.textContent || "").join(" "));
+  }
+
+  // Returns { label, fromUrl }. fromUrl = no real text was found, so the label
+  // was derived from the URL (rank.js then withholds the area bonus).
   function anchorLabel(a, url) {
-    const img = a.querySelector("img[alt]");
-    return (
+    const img = a.querySelector("img");
+    const label =
       collapse(a.innerText) ||
       collapse(a.getAttribute("aria-label")) ||
       collapse(a.textContent) || // innerText is "" under visibility:hidden
-      collapse(a.getAttribute("title")) ||
       collapse(img && img.getAttribute("alt")) ||
-      collapse(a.querySelector("svg title")?.textContent) ||
-      url
-    );
+      collapse(img && img.getAttribute("title")) ||
+      labelledBy(a) ||
+      collapse(a.closest("figure")?.querySelector("figcaption")?.textContent) ||
+      collapse(a.getAttribute("title")) ||
+      collapse(a.querySelector("svg title")?.textContent);
+    return label ? { label, fromUrl: false } : { label: readableUrl(url), fromUrl: true };
+  }
+
+  function areaLabel(area, url) {
+    const label = collapse(area.getAttribute("alt")) || collapse(area.getAttribute("aria-label")) || collapse(area.getAttribute("title"));
+    return label ? { label, fromUrl: false } : { label: readableUrl(url), fromUrl: true };
   }
 
   function resolveHref(el) {
@@ -166,9 +201,11 @@ export function extractLinks(opts) {
       fontWeight = Math.max(fontWeight, parseInt(hs.fontWeight, 10) || 0);
     }
     const img = a.localName === "area" ? layoutEl : a.querySelector("img");
+    const lbl = a.localName === "area" ? areaLabel(a, url) : anchorLabel(a, url);
     candidates.push({
       url,
-      label: a.localName === "area" ? collapse(a.getAttribute("alt")) || collapse(a.getAttribute("title")) || url : anchorLabel(a, url),
+      label: lbl.label,
+      labelFromUrl: lbl.fromUrl,
       source: "link",
       visible,
       inViewport: visible && geo.inViewport,
@@ -205,6 +242,7 @@ export function extractLinks(opts) {
       candidates.push({
         url: f.url,
         label: f.text,
+        labelFromUrl: true,
         source: "text",
         visible,
         inViewport: visible && geo.inViewport,

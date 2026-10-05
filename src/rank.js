@@ -15,7 +15,9 @@
 //   font size     (px - 16) / 4, clamped to [-1, +3]   (12px -> -1, 28px -> +3)
 //   bold          +0.5 when font-weight >= 600
 //   heading       h1 +3, h2 +2.5, h3 +2, h4 +1.5, h5 +1, h6 +0.5
-//   area          log2(1 + px² / 2000), clamped to [0, +3]
+//   area          log2(1 + px² / 2000), clamped to [0, +3]; only for links
+//                 with an informative label (not derived from the URL), so a
+//                 big unlabeled image link doesn't outrank real text links
 //                 (a 100x20 link = +1, a 200x80 button ≈ +3.2 -> +3)
 //   region        main/article +1.5; nav/header/footer/aside -2
 //   image link    +0.5 for an image link with alt text
@@ -35,7 +37,7 @@ export function prominence(c) {
   if (Number.isFinite(c.fontSize)) s += clamp((c.fontSize - 16) / 4, -1, 3);
   if (c.fontWeight >= 600) s += 0.5;
   s += HEADING_BONUS[c.headingLevel] || 0;
-  if (c.area > 0) s += clamp(Math.log2(1 + c.area / 2000), 0, 3);
+  if (c.area > 0 && hasInformativeLabel(c)) s += clamp(Math.log2(1 + c.area / 2000), 0, 3);
   s += REGION_BONUS[c.region] || 0;
   if (c.isImage && c.hasAlt) s += 0.5;
   return s;
@@ -72,6 +74,8 @@ export function isInformativeLabel(label, url) {
   return l.length > 0 && l !== url && !looksLikeUrl(l);
 }
 
+export const hasInformativeLabel = (c) => !c.labelFromUrl && isInformativeLabel(c.label, c.url);
+
 // Comparison used both to pick the best duplicate and inside tiers.
 function betterCandidate(a, b) {
   const ta = tierOf(a), tb = tierOf(b);
@@ -93,13 +97,14 @@ export function mergeCandidates(candidates) {
   for (const [url, group] of groups) {
     const sorted = [...group].sort(betterCandidate);
     const best = sorted[0];
-    const informative = sorted.find((c) => isInformativeLabel(c.label, c.url));
+    const informative = sorted.find(hasInformativeLabel);
     const label = ((informative || best).label || url).trim();
     const sources = [...new Set(group.map((c) => c.source || "link"))];
     merged.push({
       ...best,
       url,
       label: label.normalize("NFC"),
+      labelFromUrl: !informative,
       docIndex: Math.min(...group.map((c) => c.docIndex ?? Infinity)),
       count: group.length,
       fromText: sources.every((s) => s === "text"),

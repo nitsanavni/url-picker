@@ -9,7 +9,7 @@ A Chrome extension (Manifest V3) for opening links from the keyboard. Press **Co
 - Lists every `http(s)` link on the page (`<a href>`, `<area href>`) plus URLs written as plain text (`https://…`, `www.…`), with duplicates removed.
 - The list is sorted so the links you can see come first, and prominent links come before small ones (see [Ranking](#ranking)).
 - Typing filters right away using [fzf-for-js](https://github.com/ajitid/fzf-for-js), the same algorithm and extended syntax as fzf, over each link's label and URL.
-- Each row shows the label with matches highlighted and the URL below it, muted. Badges mark links that are **off-screen**, **hidden**, or found as plain **text**.
+- Each row shows the label with matches highlighted and the URL below it, muted. Links without text are labelled from the image alt, image title, `aria-labelledby`, the enclosing figure's caption or the link title, and as a last resort a readable form of the URL (last path segment, decoded, or the host). Badges mark links that are **off-screen**, **hidden**, or found as plain **text**.
 
 ### Keys
 
@@ -64,7 +64,7 @@ With an empty query, links are sorted by page rank (pure functions in `src/rank.
 | font size | `(px − 16) / 4`, clamped to [−1, +3] |
 | bold (`font-weight ≥ 600`) | +0.5 |
 | in or containing a heading | h1 +3, h2 +2.5, h3 +2, h4 +1.5, h5 +1, h6 +0.5 |
-| rendered area | `log2(1 + px² / 2000)`, clamped to [0, +3] |
+| rendered area | `log2(1 + px² / 2000)`, clamped to [0, +3]. Only for links with real label text: a link whose label had to be derived from its URL (e.g. an image with no alt) gets no area bonus |
 | region | `main`/`article` +1.5, `nav`/`header`/`footer`/`aside` (or ARIA role equivalents) −2 |
 | image link with alt text | +0.5 |
 

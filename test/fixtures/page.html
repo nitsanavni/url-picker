@@ -25,6 +25,8 @@
   <h1><a href="/story">Big Story Headline</a></h1>
   <p>Intro with an <a href="/inline">inline link</a> and a plain URL https://plain.example.com/doc. Also see
      (www.text-www.example.org/page) and <a href="https://linked.example.com/">https://linked.example.com/ inside a link</a>.</p>
+  <a href="/wiki/File:Did_you_mean_andr%C3%A9.png" style="float:right"><img width="300" height="200"
+     style="display:block;background:#bbb" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></a>
   <a class="card" href="/card">Card link</a>
   <p><a href="/small" style="font-size:11px">small print</a>
      <a href="/dup">Dup informative label</a>
@@ -32,6 +34,10 @@
      <a href="https://other.example.com/abs#frag">fragment link</a>
      <a href="/imglink"><img alt="Logo picture" width="120" height="60" style="display:block;background:#ccc"
         src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></a>
+     <span id="lb-src">Labelled elsewhere</span>
+     <a href="/labelledby" aria-labelledby="lb-src"><svg width="16" height="16"><rect width="16" height="16"/></svg></a>
+     <a href="/imgtitle"><img title="Image title" width="16" height="16" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></a>
+     <a href="/linktitle" title="Link title"><svg width="16" height="16"><rect width="16" height="16"/></svg></a>
      <a href="/aria" aria-label="Aria only"><svg width="20" height="20"><rect width="20" height="20"/></svg></a>
   </p>
   <p>
@@ -47,6 +53,9 @@
   <div style="opacity:0"><a href="/hidden-opacity">hidden by opacity</a></div>
   <script>var s = "https://in-script.example.com/";</script>
   <textarea>https://in-textarea.example.com/</textarea>
+  <figure><a href="/figure"><img width="40" height="40" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></a>
+    <figcaption>Figure caption text</figcaption></figure>
+  <a href="https://bare.example.com/"><img width="40" height="40" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></a>
   <div class="spacer"></div>
   <a href="/below">Below the fold</a>
   <a href="/dup">/dup again</a>
