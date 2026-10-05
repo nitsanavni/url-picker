@@ -115,6 +115,7 @@ export function extractLinks(opts) {
     return (
       collapse(a.innerText) ||
       collapse(a.getAttribute("aria-label")) ||
+      collapse(a.textContent) || // innerText is "" under visibility:hidden
       collapse(a.getAttribute("title")) ||
       collapse(img && img.getAttribute("alt")) ||
       collapse(a.querySelector("svg title")?.textContent) ||
@@ -124,7 +125,8 @@ export function extractLinks(opts) {
 
   function resolveHref(el) {
     const raw = el.getAttribute("href");
-    if (raw == null) return null;
+    // "" and "#" point back at this page (typically JS-driven buttons): skip.
+    if (raw == null || raw.trim() === "" || raw.trim() === "#") return null;
     try {
       const u = new URL(raw.trim(), document.baseURI);
       return u.protocol === "http:" || u.protocol === "https:" ? u.href : null;

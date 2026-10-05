@@ -15,8 +15,8 @@
 //   font size     (px - 16) / 4, clamped to [-1, +3]   (12px -> -1, 28px -> +3)
 //   bold          +0.5 when font-weight >= 600
 //   heading       h1 +3, h2 +2.5, h3 +2, h4 +1.5, h5 +1, h6 +0.5
-//   area          log2(1 + px² / 2000), clamped to [0, +2]
-//                 (a 100x20 link ≈ +1, a 200x80 card or image = +2)
+//   area          log2(1 + px² / 2000), clamped to [0, +3]
+//                 (a 100x20 link = +1, a 200x80 button ≈ +3.2 -> +3)
 //   region        main/article +1.5; nav/header/footer/aside -2
 //   image link    +0.5 for an image link with alt text
 // Bucket = floor(prominence / BUCKET). Coarse buckets mean small differences
@@ -35,7 +35,7 @@ export function prominence(c) {
   if (Number.isFinite(c.fontSize)) s += clamp((c.fontSize - 16) / 4, -1, 3);
   if (c.fontWeight >= 600) s += 0.5;
   s += HEADING_BONUS[c.headingLevel] || 0;
-  if (c.area > 0) s += clamp(Math.log2(1 + c.area / 2000), 0, 2);
+  if (c.area > 0) s += clamp(Math.log2(1 + c.area / 2000), 0, 3);
   s += REGION_BONUS[c.region] || 0;
   if (c.isImage && c.hasAlt) s += 0.5;
   return s;

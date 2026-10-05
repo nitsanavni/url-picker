@@ -46,7 +46,7 @@ describe("prominence", () => {
     expect(prominence(c({ fontWeight: 700 }))).toBe(base + 0.5);
     expect(prominence(c({ headingLevel: 1 }))).toBe(base + 3);
     expect(prominence(c({ headingLevel: 1 }))).toBeGreaterThan(prominence(c({ headingLevel: 3 })));
-    expect(prominence(c({ area: 50000 }))).toBe(prominence(c({ area: 0 })) + 2); // clamped
+    expect(prominence(c({ area: 50000 }))).toBe(prominence(c({ area: 0 })) + 3); // clamped
     expect(prominence(c({ region: "main" }))).toBe(base + 1.5);
     expect(prominence(c({ isImage: true, hasAlt: true }))).toBe(base + 0.5);
   });
