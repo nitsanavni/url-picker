@@ -9,7 +9,8 @@
 //   cursor,     // index into results
 //   selected,   // URLs, in the order they were selected
 //   status,     // transient message, e.g. "copied 2"
-//   effect,     // null | {type:'open', urls} | {type:'copy', urls} | {type:'close'}
+//   effect,     // null | {type:'open', urls} | {type:'goto', urls} | {type:'copy', urls} | {type:'close'}
+//               // goto: navigate the source tab to urls[0], open the rest as new tabs after it
 // }
 
 // Map a keyboard event to a picker command (or null = let the input have it).
@@ -17,7 +18,7 @@ export function keyCommand(e) {
   const { key, ctrlKey = false, metaKey = false, altKey = false, shiftKey = false } = e;
   if (altKey) return null;
   if (key === "Escape") return "close";
-  if (key === "Enter") return "accept";
+  if (key === "Enter") return shiftKey ? "acceptHere" : "accept";
   if (key === "Tab") return shiftKey ? "toggleUp" : "toggleDown";
   if (key === "ArrowDown" && !ctrlKey && !metaKey) return "down";
   if (key === "ArrowUp" && !ctrlKey && !metaKey) return "up";
@@ -86,7 +87,8 @@ export function reduce(state, action) {
       return { ...s, status: action.text };
     case "click": {
       const r = s.results[action.index];
-      return r ? { ...s, cursor: action.index, effect: { type: "open", urls: [r.item.url] } } : s;
+      if (!r) return s;
+      return { ...s, cursor: action.index, effect: { type: action.here ? "goto" : "open", urls: [r.item.url] } };
     }
     case "command":
       switch (action.command) {
@@ -105,6 +107,10 @@ export function reduce(state, action) {
         case "accept": {
           const urls = targetUrls(s);
           return urls.length ? { ...s, effect: { type: "open", urls } } : s;
+        }
+        case "acceptHere": {
+          const urls = targetUrls(s);
+          return urls.length ? { ...s, effect: { type: "goto", urls } } : s;
         }
         case "copy": {
           const urls = targetUrls(s);

@@ -21,10 +21,12 @@ A Chrome extension (Manifest V3) for opening links from the keyboard. Press **Co
 | `Tab` | select/unselect the highlighted item and move down |
 | `Shift+Tab` | select/unselect and move up |
 | `Enter` | open the selected items (in the order you selected them), or the highlighted item if nothing is selected, as background tabs right after the current tab |
+| `Shift+Enter` | go there in the **current tab**. With a selection, the current tab goes to the first selected item and the rest open as background tabs right after it |
 | `Ctrl+Y` | copy the selected URLs (or the highlighted one), one per line. The popup stays open and shows "copied N" |
 | `⌘C` / `Ctrl+C` | same as `Ctrl+Y`, unless you have text selected in the filter box (then it copies that text as usual) |
 | `Esc` | close |
-| click | open that row |
+| click | open that row in a new background tab |
+| Shift+click | go to that row in the current tab |
 
 Selection is keyed by URL, so it survives filter changes. You can select something, change the query, select more, and press Enter.
 

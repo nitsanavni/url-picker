@@ -29,6 +29,7 @@ describe("keyCommand", () => {
     expect(keyCommand({ key: "Tab" })).toBe("toggleDown");
     expect(keyCommand({ key: "Tab", shiftKey: true })).toBe("toggleUp");
     expect(keyCommand({ key: "Enter" })).toBe("accept");
+    expect(keyCommand({ key: "Enter", shiftKey: true })).toBe("acceptHere");
     expect(keyCommand({ key: "Escape" })).toBe("close");
   });
   test("copy: Ctrl+Y always, Cmd/Ctrl+C only without a text selection in the input", () => {
@@ -123,6 +124,26 @@ describe("reduce", () => {
     expect(s.effect).toEqual({ type: "open", urls: ["https://a.com/gamma"] });
     const s2 = run(start(), cmd("down"), cmd("accept"));
     expect(s2.effect).toEqual({ type: "open", urls: ["https://a.com/beta"] });
+  });
+
+  test("Shift+Enter without a selection goes to the highlighted item in the current tab", () => {
+    const s = run(start(), typed("ga"), cmd("acceptHere"));
+    expect(s.effect).toEqual({ type: "goto", urls: ["https://a.com/gamma"] });
+  });
+
+  test("Shift+Enter with a selection: first selected goes here, the rest in selection order", () => {
+    const s = run(start(), typed("del"), cmd("toggleDown"), typed("beta"), cmd("toggleDown"), typed("gam"), cmd("acceptHere"));
+    expect(s.effect).toEqual({ type: "goto", urls: ["https://a.com/delta", "https://a.com/beta"] });
+  });
+
+  test("Shift+Enter with no results and no selection does nothing", () => {
+    expect(run(start(), typed("zzzzqqq"), cmd("acceptHere")).effect).toBe(null);
+  });
+
+  test("Shift+click goes to that row in the current tab", () => {
+    const s = run(start(), { type: "click", index: 1, here: true });
+    expect(s.effect).toEqual({ type: "goto", urls: ["https://a.com/beta"] });
+    expect(s.cursor).toBe(1);
   });
 
   test("Escape closes", () => {

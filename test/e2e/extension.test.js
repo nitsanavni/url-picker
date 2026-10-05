@@ -94,6 +94,15 @@ async function pressAndWaitClose(popup, key) {
   await closed;
 }
 
+async function waitForTabUrl(tabId, url) {
+  for (let i = 0; i < 100; i++) {
+    const t = (await allTabs()).find((t) => t.id === tabId);
+    if (t && t.url === url) return t;
+    await Bun.sleep(50);
+  }
+  throw new Error(`tab ${tabId} never reached ${url}`);
+}
+
 // Close everything but the first tab (closing the last tab would end the browser).
 const closeTabsExcept = async () => {
   for (const p of context.pages().slice(1)) await p.close();
@@ -196,6 +205,52 @@ describe("URL Picker popup", () => {
     const src = tabs.find((t) => t.id === source.id);
     const opened = tabs.find((t) => t.windowId === src.windowId && t.index === src.index + 1);
     expect(opened.url).toBe(`${base}/${second.toLowerCase()}`);
+    await closeTabsExcept([]);
+  });
+
+  test("Shift+Enter navigates the source tab and opens no new tab", async () => {
+    const { tab: source } = await openSource();
+    const popup = await readyPopup(source.id);
+    const before = (await allTabs()).filter((t) => !t.url.startsWith("chrome-extension:")).length;
+    await popup.keyboard.type("'Card link");
+    await pressAndWaitClose(popup, "Shift+Enter");
+    await waitForTabUrl(source.id, `${base}/card`);
+    const tabs = await allTabs();
+    expect(tabs.filter((t) => !t.url.startsWith("chrome-extension:")).length).toBe(before);
+    await closeTabsExcept([]);
+  });
+
+  test("Shift+Enter with a selection: source goes to the first selected, the rest open after it", async () => {
+    const { tab: source } = await openSource();
+    const other = await context.newPage();
+    await other.goto(base + "/other");
+    const popup = await readyPopup(source.id);
+    const q = popup.locator("#q");
+    await q.fill("below");
+    await popup.keyboard.press("Tab");
+    await q.fill("card link");
+    await popup.keyboard.press("Tab");
+    await q.fill("relative");
+    await popup.keyboard.press("Tab");
+    await pressAndWaitClose(popup, "Shift+Enter");
+    await waitForTabUrl(source.id, `${base}/below`);
+    const tabs = (await allTabs()).filter((t) => t.windowId === source.windowId).sort((a, b) => a.index - b.index);
+    const src = tabs.find((t) => t.id === source.id);
+    expect(tabs.slice(src.index + 1, src.index + 4).map((t) => t.url)).toEqual([
+      `${base}/card`,
+      `${base}/relative/path?x=1`,
+      `${base}/other`,
+    ]);
+    await closeTabsExcept([]);
+  });
+
+  test("Shift+click navigates the source tab to that row", async () => {
+    const { tab: source } = await openSource();
+    const popup = await readyPopup(source.id);
+    const closed = popup.waitForEvent("close");
+    await popup.locator(".row", { hasText: "Card link" }).click({ modifiers: ["Shift"] }).catch(() => {});
+    await closed;
+    await waitForTabUrl(source.id, `${base}/card`);
     await closeTabsExcept([]);
   });
 

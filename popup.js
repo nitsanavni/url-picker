@@ -84,6 +84,13 @@ async function runEffect(effect) {
     await openTabs(effect.urls);
     return window.close();
   }
+  if (effect.type === "goto") {
+    // Open the rest first: once the source tab navigates, its index is unchanged
+    // but we want them right after it, in order.
+    await openTabs(effect.urls.slice(1));
+    await chrome.tabs.update(sourceTab.id, { url: effect.urls[0] });
+    return window.close();
+  }
   if (effect.type === "copy") {
     const ok = await copyText(effect.urls.join("\n"));
     flashStatus(ok ? `copied ${effect.urls.length}` : "copy failed");
@@ -238,7 +245,7 @@ document.addEventListener("keydown", (e) => {
 
 list.addEventListener("click", (e) => {
   const row = e.target.closest(".row");
-  if (row) dispatch({ type: "click", index: Number(row.dataset.index) });
+  if (row) dispatch({ type: "click", index: Number(row.dataset.index), here: e.shiftKey });
 });
 
 // Keep typing going to the filter even after a click elsewhere.
